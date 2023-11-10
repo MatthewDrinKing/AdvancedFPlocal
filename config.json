@@ -1,0 +1,6 @@
+{
+    "middle_server_address": "http://167.99.192.169:5000",
+    "fiscal_printer_address": "http://2.239.218.86:50031/cgi-bin/fpmate.cgi",
+    "poll_interval_seconds": 3,
+    "venue_name": "Test venue"
+}
