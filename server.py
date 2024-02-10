@@ -31,7 +31,7 @@ def try_execute_print(order):
         'SOAPAction': ''
     }
 
-    response = requests.post('https://testing-prod.requestcatcher.com/', data=printer_xml, headers=headers)
+    response = requests.post(config["fiscal_printer_address"], data=printer_xml, headers=headers)
     if response.status_code == 200:
         print("Printing:", printer_xml)
         print("Response:", response.text)
