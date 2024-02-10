@@ -8,7 +8,7 @@ with open('config.json', 'r') as config_file:
     config = json.load(config_file)
 
 # Define a retry decorator
-@retry(stop_max_attempt_number=3, wait_fixed=2000)  # Retry 3 times with a 2-second delay
+@retry(stop_max_attempt_number=1, wait_fixed=2000)  # Retry 3 times with a 2-second delay
 def try_execute_print(order):
     OPERATOR_ID = 1
     subtotal = 0
