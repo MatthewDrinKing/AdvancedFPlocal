@@ -1,0 +1,48 @@
+This is the program running on the local raspberry pi onsite at the venue
+
+To be done:
+
+1.) ensure that the response from the fiscal printer can be properly interpreted for the fiscal id and that is sucessful updated to the fiscal printer
+2.) update the middle server code to be able to receive refund requests from the main drinking api and mark it appropriately
+
+
+
+
+This command is to send a new order to the middle server
+
+curl -X POST \
+  http://167.99.192.169:5000/process-json \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": [
+      {
+        "name": "Example Product",
+        "price": "10.00",
+        "quantity": "1",
+        "isfood": "false"
+      }
+    ],
+    "Time": "2024-02-15T12:00:00.000Z",
+    "venue": "Test",
+    "total": "10.00",
+    "id": "1"
+  }'
+
+This is the instruction to clear the db of the test orders:
+
+DELETE FROM orders WHERE venue = 'Test';
+
+This command is to send an order directly to a fiscal printer
+
+  curl -X POST \
+  http://2.239.218.86:50031/cgi-bin/fpmate.cgi \
+  -H "Content-Type: text/xml" \
+  -d '
+  <s:Envelope xmlns:s=\http://schemas.xmlsoap.org/soap/envelope/\><s:Body><printerFiscalReceipt><beginFiscalReceipt operator="1" /><printRecItem description="Ziver City Lager (Pint)" quantity="2" unitPrice="6.0" department="1" operator="1" justification="1" /><printRecTotal operator="1" description="CARTA DI CREDITO" payment="12.00" paymentType="2" index="1" justification="1" /><endFiscalReceipt operator="1" /></printerFiscalReceipt></s:Body></s:Envelope>
+'
+This is the command to send update update with fiscal number to the middle server
+
+curl -X POST \
+  http://167.99.192.169:5000/orders/1001/update \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "fiscal_id=123"

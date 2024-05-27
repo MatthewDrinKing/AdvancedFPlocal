@@ -2,13 +2,14 @@ import requests
 from retrying import retry
 import json
 import time
+import xml.etree.ElementTree as ET
 
 # Load configuration settings from config.json
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
 
 # Define a retry decorator
-@retry(stop_max_attempt_number=1, wait_fixed=2000)  # Retry 3 times with a 2-second delay
+@retry(stop_max_attempt_number=3, wait_fixed=2000)
 def try_execute_print(order):
     OPERATOR_ID = 1
     subtotal = 0
@@ -36,27 +37,27 @@ def try_execute_print(order):
         print("Printing:", printer_xml)
         print("Response:", response.text)
 
-        # Check if the response contains data before parsing it as JSON
-        if response.text:
-            try:
-                response_data = response.json()
-                add_info = response_data.get('soapenv:Envelope', {}).get('soapenv:Body', {}).get('response', {}).get('addInfo', {})
-                fiscal_receipt_number = add_info.get('fiscalReceiptNumber', 'N/A')
-                fiscal_receipt_amount = add_info.get('fiscalReceiptAmount', 'N/A')
-                fiscal_receipt_date = add_info.get('fiscalReceiptDate', 'N/A')
-                fiscal_receipt_time = add_info.get('fiscalReceiptTime', 'N/A')
-                serial_number = add_info.get('serialNumber', 'N/A')
+        # Parse the XML response
+        try:
+            root = ET.fromstring(response.text)
+            response_elem = root.find('.//response')
+            if response_elem is not None and response_elem.attrib['success'] == 'true':
+                add_info = response_elem.find('addInfo')
+                fiscal_receipt_number = add_info.find('fiscalReceiptNumber').text
 
+                # Print the fiscal receipt number
                 print(f"Fiscal Receipt Number: {fiscal_receipt_number}")
-                print(f"Fiscal Receipt Amount: {fiscal_receipt_amount}")
-                print(f"Fiscal Receipt Date: {fiscal_receipt_date}")
-                print(f"Fiscal Receipt Time: {fiscal_receipt_time}")
-                print(f"Serial Number: {serial_number}")
-            except json.JSONDecodeError:
-                print("Error decoding JSON response")
+
+                return fiscal_receipt_number
+            else:
+                print("Error in response or response unsuccessful")
+                return None
+        except ET.ParseError:
+            print("Error parsing XML response")
+            return None
     else:
         print("Printing failed")
-
+        return None
 
 def main():
     while True:
@@ -70,17 +71,16 @@ def main():
 
                 # Process orders and send to fiscal printer
                 for order in orders:
-                    try_execute_print(order)
+                    fiscal_receipt_number = try_execute_print(order)
 
-                    # Update the order with the fiscal ID
-                    # Check if 'id' is available in the order before accessing it
-                    if 'id' in order:
-                        order_id = order['id']
-                        fiscal_id = "<fiscal_id_from_response>"
-                        update_response = requests.post(f'{config["middle_server_address"]}/orders/{order_id}/update', data={"fiscal_id": fiscal_id})
+                    if fiscal_receipt_number:
+                        # Update the order with the fiscal ID
+                        if 'id' in order:
+                            order_id = order['id']
+                            update_response = requests.post(f'{config["middle_server_address"]}/orders/{order_id}/update', data={"fiscal_id": fiscal_receipt_number})
 
-                        if update_response.status_code == 200:
-                            print(f"Order {order_id} updated with fiscal ID {fiscal_id}")
+                            if update_response.status_code == 200:
+                                print(f"Order {order_id} updated with fiscal ID {fiscal_receipt_number}")
 
             except json.JSONDecodeError:
                 print("Error decoding JSON response")
